@@ -13,7 +13,7 @@ public class ExtendedItems
         Defense,
         Buff
     }
-
+    
     // for all melee weapons
     static public class Melee extends Items
     {
