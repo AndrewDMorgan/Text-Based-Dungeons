@@ -1,4 +1,5 @@
-import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;  // for sleeping/waiting
+import java.util.ArrayList;  // for dropped items
 import java.util.Scanner;  // for player input
 
 public class Player
@@ -13,27 +14,41 @@ public class Player
     private int health = 10;
 
     // different stats
-    private int glow = 4;
-    private int regen = 5;  // turns before +1 heart (default is 5 so really slow)
-    private int strength = 1;  // multiplier (attackDamage *= (float)strength/4)
+    private int glow = 5;  // base is 5
+    private int strength = 4;  // multiplier (attackDamage *= (float)strength/4)
+    private int defense = 4;  // a divisor (every +4 is 1 grater dividend)
 
-    // 0; nothing, 1; wooden sword, 2; ancient torch, 3; ancient axe, 4; wooden spear, 5; wooden bow, 6; stone sword, 7; tiki torch, 8; stone spear
+    // 0; nothing, 1; wooden sword, 2; ancient torch, 3; ancient axe, 4; wooden spear, 5; wooden bow, 6; stone sword, 7; tiki torch, 8; stone spear, 9; Rusty Sword, 10; cross bow
     final private Items[] allItems = {
             new Items("", ExtendedItems.ItemTypes.None),  // nothing item
             new ExtendedItems.Melee ("Wooden Sword" , ExtendedItems.ItemTypes.Melee , 2, 1),
-            new ExtendedItems.Light ("Ancient Torch", ExtendedItems.ItemTypes.Light ,   5),  // one better light than normal player
+            new ExtendedItems.Light ("Ancient Torch", ExtendedItems.ItemTypes.Light ,   6),  // one better light than normal player
             new ExtendedItems.Melee ("Ancient Axe"  , ExtendedItems.ItemTypes.Melee , 3, 1),
             new ExtendedItems.Melee ("Wooden Spear" , ExtendedItems.ItemTypes.Melee , 1, 2),
             new ExtendedItems.Ranged("Wooden Bow"   , ExtendedItems.ItemTypes.Ranged, 2, 6),
             new ExtendedItems.Melee ("Stone Sword"  , ExtendedItems.ItemTypes.Melee , 3, 1),
-            new ExtendedItems.Light ("Tiki Torch"   , ExtendedItems.ItemTypes.Light ,   7),
-            new ExtendedItems.Melee ("Stone Spear"  , ExtendedItems.ItemTypes.Melee , 2, 2)
+            new ExtendedItems.Light ("Tiki Torch"   , ExtendedItems.ItemTypes.Light ,   8),
+            new ExtendedItems.Melee ("Stone Spear"  , ExtendedItems.ItemTypes.Melee , 2, 2),
+            new ExtendedItems.Melee ("Rust Sword"   , ExtendedItems.ItemTypes.Melee , 1, 1),
+            new ExtendedItems.Ranged("Cross Bow"    , ExtendedItems.ItemTypes.Ranged, 4, 10),
+
+            // buffs 11; health buff, 12; glow buff, 13; strength buff, 14; defense buff
+            new ExtendedItems.Buff  ("Health Buff"  , ExtendedItems.ItemTypes.Buff  , this,
+                    new ExtendedItems.Buff.Effects[] {ExtendedItems.Buff.Effects.Health},new int[] {4}),
+            new ExtendedItems.Buff  ("Glow Buff"    , ExtendedItems.ItemTypes.Buff  , this,
+                    new ExtendedItems.Buff.Effects[] {ExtendedItems.Buff.Effects.Glow},new int[] {2}),
+            new ExtendedItems.Buff  ("Strength Buff", ExtendedItems.ItemTypes.Buff  , this,
+                    new ExtendedItems.Buff.Effects[] {ExtendedItems.Buff.Effects.Strength},new int[] {1}),
+            new ExtendedItems.Buff  ("Defense Buff" , ExtendedItems.ItemTypes.Buff  , this,
+                    new ExtendedItems.Buff.Effects[] {ExtendedItems.Buff.Effects.Defense},new int[] {1})
     };
 
-    // five empty slots
-    private Items[] items = {allItems[0], allItems[0], allItems[0], allItems[0], allItems[0]};  // an empty list of items
+    // five empty slots (player starts with a 9: rusty sword)
+    private Items[] items = {allItems[9], allItems[0], allItems[0], allItems[0], allItems[0]};  // an empty list of items
 
-    private Scanner scanner = new Scanner(System.in);
+    public boolean alive = true;  // the players state (alive or dead)
+
+    private final Scanner scanner = new Scanner(System.in);
 
     // the constructor
     public Player()
@@ -50,7 +65,7 @@ public class Player
         return false;
     }
 
-    private boolean Colision(Map map, int dx, int dy)
+    private boolean Collision(Map map, int dx, int dy)
     {
         if (map.CheckBounds(x + dx, y + dy, true))
         {
@@ -66,8 +81,14 @@ public class Player
 
     public void Update(Map map)  // updates the player (controls the user interface to)
     {
+        items[hand].PrintInfo();  // prints the basic info of the weapon held
+
+        // rendering the hearts
+        for (int i = 0; i < health; i++) {System.out.print("♥");}
+        for (int i = 0; i < 10-health; i++) {System.out.print("♡");}
+
         // getting the players input for direction
-        System.out.print("south, east, north, west\nwasd\nDirection >> ");
+        System.out.print("\nsouth, east, north, west\nwasd\nDirection >> ");
         String dir = scanner.nextLine();
         // getting the players action type (move, attack, interact, ect..)
         System.out.print("\ne - use\nm - move\na - attack\ni - inventory\n1-5 - Hand\nAction >> ");
@@ -88,7 +109,7 @@ public class Player
         if (act.equalsIgnoreCase("m"))
         {
             // attempting to move the player
-            if (Colision(map,  dx, dy))
+            if (Collision(map,  dx, dy))
             {
                 // moving the player
                 x += dx;
@@ -112,32 +133,39 @@ public class Player
             // checking if a chest was interacted with
             if (isChest)
             {
+                System.out.println("\n");  // add a new line so the item info renders correctly
+
                 // getting the chests items
                 Items[] chestItems = map.GetChestLoot(this, x + dx, y + dy);
+
+                int numLoot = 0;  // the number of new items in the inventory
+
                 // adding every item from the chest to the player
                 for (int i = 0; i < chestItems.length; i++)
                 {
                     // adding the item to the inventory or dropped items
-                    AddLoot(chestItems[i], map, x + dx, y + dy);
+                    boolean added = AddLoot(chestItems[i], map, x + dx, y + dy);
+                    if (added) numLoot++;  // the number of new items in the inventory
                 }
+
+                // waiting so the player can read what was picked up
+                Sleep(750 * numLoot);
             }
         }
         // checking if the inventory is being viewed
         else if (act.equalsIgnoreCase("i"))
         {
-            // showing all items (for now just the names)
-            for (int i = 0; i < 5; i++)
-            {
-                if (!items[i].GetName().equals(""))
-                {
-                    System.out.println((i+1) + ": " + items[i].GetName());
-                }
-            }
-
             boolean inInventory = true;  // if the player is in the inventory
             // looping while the player is messing with the inventory
             while (inInventory)
             {
+                // showing all items (for now just the names)
+                for (int i = 0; i < 5; i++)
+                {
+                    // printing the item
+                    if (!items[i].GetName().equals("")) System.out.println((i+1) + ": " + items[i].GetName());
+                }
+
                 // showing the actions that can be done
                 System.out.print("q - drop\nd - delete/remove\nm - move item\n > ");
                 String usrAct = scanner.nextLine().toLowerCase();
@@ -158,13 +186,13 @@ public class Player
                         // checking if the number is within the range of the inventory
                         if (slot > 4 || slot < 0) throw new Exception();
 
-                        if      (usrAct.equals("q"))
+                        if (usrAct.equals("q"))  // dropping the item
                         {
-                            map.AddDroppedItem(items[slot], x, y);  // adding a new dropped item
+                            map.AddDroppedItem(items[slot], x + dx, y + dy);  // adding a new dropped item
                             items[slot] = allItems[0].Copy();  // removing the item from the inventory
                         }
-                        else if (usrAct.equals("d")) {items[slot] = allItems[0].Copy();}  // removing an item from the inventory
-                        else if (usrAct.equals("m"))  // moving/swaping items
+                        else if (usrAct.equals("d")) {items[slot] = allItems[0].Copy();}  // removing an item
+                        else if (usrAct.equals("m"))  // moving/swapping items
                         {
                             // checking the second index
                             try
@@ -192,9 +220,18 @@ public class Player
                 else inInventory = false;  // ends the loop
             }
         }
+        else if (act.equalsIgnoreCase("a"))
+        {
+            // attacking any mobs
+            items[hand].Attack(this, map.GetMobs(), strength, dx, dy);
+        }
 
         // checking if the player should pick up any items
-        ArrayList<Map.DroppedItems> droppedItems = map.GetDroppedItems();
+        ArrayList<Map.DroppedItems> droppedItems = map.GetDroppedItems();  // a copy
+        int numDeled = 0;  // the number of picked up items
+
+        System.out.println("\n");  // add a new line so the item info renders correctly
+
         // looping through the dropped items
         for (int i = 0; i < droppedItems.size(); i++)
         {
@@ -203,10 +240,16 @@ public class Player
             if (item.x == x && item.y == y)
             {
                 boolean added = AddLoot(item.item, map, x, y);  // adding the item to the inventory or back to the ground
-                if (added) map.RemoveDroppedItem(i);  // removing the item
+                if (added)
+                {
+                    map.RemoveDroppedItem(i - numDeled);  // removing the item
+                    numDeled ++;  // incrementing numDeled
+                }  // removing the item
                 else break;  // stopping early since no room in inventory
             }
         }
+
+        if (numDeled > 0) Sleep(750 * numDeled);  // giving the player time to read to picked up items
 
         // clearing the previous frame
         System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
@@ -215,7 +258,58 @@ public class Player
     // attacks the player
     public void Attack(int attackDamage)
     {
-        // hurts the player based on armor and maybe potions (idk anything about potions yet)
+        // hurts the player based on armor and maybe potions (IDK anything about potions yet)
+        health -= attackDamage / ((float)defense * 0.25);  // add armor
+
+        if (health <= 0) alive = false;  // the player is no longer alive
+    }
+
+    // adds an item to the inventory
+    public boolean AddLoot(Items item, Map map, int x, int y)  // adds the item and returns true or if inventory full returns false
+    {
+        // checking if the item is a buff
+        if (item.GetType() == ExtendedItems.ItemTypes.Buff)
+        {
+            // printing the basic info on the item
+            item.PrintInfo();
+
+            item.ActivateBuff();  // activating the buffs powers
+            return true;  // an item was collected (but this type isn't added to the inventory and is permanent)
+        }
+
+        // looping through all slots
+        for (int i = 0; i < 5; i++)
+        {
+            // checking if the slot is empty
+            if (items[i].GetType() == ExtendedItems.ItemTypes.None)
+            {
+                // printing the basic info on the item
+                item.PrintInfo();
+
+                // adding the item
+                items[i] = item;
+                return true;
+            }
+        }
+        map.AddDroppedItem(item, x, y);  // dropping the item as there was no space
+        return false;
+    }
+
+    // sleeps for a set amount of milliseconds
+    public void Sleep(long millSecs)
+    {
+        long start = System.currentTimeMillis();  // the starting cpu time
+        while (System.currentTimeMillis() - start < millSecs);  // waiting for the chosen amount of time to elapse
+    }
+
+    // resets the players stats for the next level
+    public void Reset(Map map)
+    {
+        health = 10;  // resetting the health
+
+        // resetting the position
+        x = map.GetStartX();
+        y = map.GetStartY();
     }
 
     // gets an item from the inventory at the given index
@@ -233,33 +327,20 @@ public class Player
 
     // gets the stats (mostly for rings)
     public int GetGlow () {return glow ;}
-    public int GetRegen() {return regen;}
     public int GetStrength() {return strength;}
+    public int GetDefense() {return defense;}
 
-    // sets the stats (mostly for rings)
-    public void SetGlow (int glow ) {this.glow  = glow ;}
-    public void SetRegen(int regen) {this.regen = regen;}
-    public void SetStrength(int strength) {this.strength = strength;}
+    // adds to the stats
+    public void AddGlow    (int glow    ) {this.glow     += glow;}
+    public void AddStrength(int strength) {this.strength += strength;}
+    public void AddDefense (int defense ) {this.defense  += defense;}
+
+    // adds health to the player
+    public void AddHealth(int health) {this.health = Math.min(this.health + health, 10);}
+
+    // returns if the player is alive or not
+    public boolean GetAlive() {return alive;}
 
     // gets the item with the given id
     public Items IDGetItem(int id) {return allItems[id];}
-
-    // adds an item to the inventory
-    public boolean AddLoot(Items item, Map map, int x, int y)  // adds the item and returns true or if inventory full returns false
-    {
-        // looping through all slots
-        for (int i = 0; i < 5; i++)
-        {
-            // checking if the slot is empty
-            if (items[i].GetType() == ExtendedItems.ItemTypes.None)
-            {
-                // adding the item
-                items[i] = item;
-                return true;
-            }
-        }
-        map.AddDroppedItem(item, x, y);  // dropping the item as there was no space
-        return false;
-    }
-
 }
