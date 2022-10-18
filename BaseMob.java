@@ -2,20 +2,20 @@ public class BaseMob // might not end up being inherited since the base class co
 {
     // the basic stats of a monster
     private int health;
-    final private int attackDamage;
-    final private float attackRange;
+    private final int attackDamage;
+    private final float attackRange;
     private boolean alive = true;
 
     // the position of the mob
     private int x;
     private int y;
 
-    private int loot[];
+    private final int[] loot;
 
-    private String sprite;
+    private final String sprite;
 
     // setting up the mob
-    public BaseMob(int x, int y, int health, int attackDamage, int attackRange, String sprite, int loot[])
+    public BaseMob(int x, int y, int health, int attackDamage, int attackRange, String sprite, int[] loot)
     {
         // initializing the stats for the mob
         this.health       = health;
@@ -40,7 +40,7 @@ public class BaseMob // might not end up being inherited since the base class co
         return (float)Math.sqrt((dx*dx + dy*dy));
     }
 
-    private enum Directions
+    public enum Directions
     {
         Left,
         Right,
@@ -61,7 +61,7 @@ public class BaseMob // might not end up being inherited since the base class co
         return false;  // no mob on pos
     }
 
-    private Directions GetMoveDir(Player player, Map map, int opx, int opy)
+    public Directions GetMoveDir(Player player, Map map, int opx, int opy)
     {
         // checking if the mob should stay still
         int d = Math.abs(x - player.GetX()) + Math.abs(y - player.GetY());
@@ -115,10 +115,10 @@ public class BaseMob // might not end up being inherited since the base class co
         if (max == 0) return Directions.None;
 
         // finding the final direction
-        if (max == ql) return Directions.Left;
-        if (max == qr) return Directions.Right;
-        if (max == qt) return Directions.Up;
-        if (max == qb) return Directions.Down;
+        if (ql > Math.max(Math.max(qr, qt), qb)) return Directions.Left;
+        if (qr > Math.max(Math.max(ql, qt), qb)) return Directions.Right;
+        if (qt > Math.max(Math.max(ql, qr), qb)) return Directions.Up;
+        if (qb > Math.max(Math.max(ql, qr), qt)) return Directions.Down;
         return Directions.None;
     }
 
@@ -161,7 +161,7 @@ public class BaseMob // might not end up being inherited since the base class co
     }
 
     // attacking the player
-    private void Attack(Player player)
+    public void Attack(Player player)
     {
         // checking the distance to the player
         int dx = x - player.GetX();
@@ -191,12 +191,19 @@ public class BaseMob // might not end up being inherited since the base class co
         return items;
     }
 
+    // gets the raw loot table for the mob
+    public int[] GetLootTable() {return loot;}
+
     // gets the mobs position
     public int GetX() {return x;}
     public int GetY() {return y;}
 
     // gets the sprite (char/string) for the mob
     public String GetChar() {return sprite;}
+
+    // sets the position of the mob
+    public void SetX(int x) {this.x = x;}
+    public void SetY(int y) {this.y = y;}
 
     // gets the state of the mob (alive or dead)
     public boolean GetAlive() {return alive;}
