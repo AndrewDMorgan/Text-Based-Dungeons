@@ -7,6 +7,9 @@ public class MobManager
         // the new mobs (all the alive mobs)
         ArrayList<BaseMob> newMobs = new ArrayList<BaseMob>();
 
+        // if a mob was killed or not
+        boolean killed = false;
+
         // updating all the mobs (second, so they don't perfectly move with the player)
         BaseMob[] mobs = map.GetMobs();
         // looping through all the mobs
@@ -18,6 +21,8 @@ public class MobManager
             }
             else
             {
+                killed = true;  // a mob was killed
+
                 // dropping the mobs loot
                 Items[] loot = mobs[i].GetLoot(player);
 
@@ -25,24 +30,50 @@ public class MobManager
                 for (int itemIndex = 0; itemIndex < loot.length; itemIndex++)
                 {
                     // adding the dropped item to the ground
-                    map.AddDroppedItem(loot[itemIndex], mobs[i].GetX(), mobs[i].GetY());
+                    if (loot[itemIndex].GetType() != ExtendedItems.ItemTypes.None) map.AddDroppedItem(loot[itemIndex], mobs[i].GetX(), mobs[i].GetY());
                 }
             }
         }
 
-        // checking if the level has been beaten
-        if (newMobs.size() == 0)
+        // checking if the level has been beaten and the player is ready
+        if (newMobs.size() == 0 || player.GetReadyNextLevel())
         {
-            map.SetMobs((new BaseMob[0]));  // no mobs left
+            boolean finished = false;  // if the game is finished or not
+            boolean msg = false;  // if the screen needs clearing
 
-            // the player has won
-            System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nLevel Beaten!!!!!");
-            Sleep(2000);  // waiting two seconds
-            System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+            // checking for the combanations of mobs dead and player being ready
+            if (player.GetReadyNextLevel() && newMobs.size() != 0)
+            {
+                System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nYou cannot go onto the next level until all mobs are killed...");
+                msg = true;
+            }
+            else if (newMobs.size() == 0)
+            {
+                map.SetMobs((new BaseMob[0]));  // no mobs left
 
-            boolean finished  = map.NextLevel(player);
-            player.Reset(map);  // resetting the players health for the next level
+                if (player.GetReadyNextLevel())
+                {
+                    System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nLevel Beaten!!!!!");
 
+                    // updating the levels
+                    finished = map.NextLevel(player);
+                    player.Reset(map);  // resetting the players health for the next level
+
+                    msg = true;
+                }
+                else if (killed)
+                {
+                    System.out.print("\nAll mobs are dead, action n to go on");
+                    msg = true;
+                }
+            }
+
+            if (msg)
+            {
+                // the player has won
+                Sleep(2000);  // waiting two seconds
+                System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+            }
             return finished;  // returning if the game has been completed or not
         }
         else
