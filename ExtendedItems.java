@@ -1,6 +1,6 @@
-import javafx.scene.effect.Glow;
+import javafx.scene.effect.Glow;  // not sure why this is here?
 
-import java.util.*;
+import java.util.*;  // not sure why this is here?
 
 public class ExtendedItems
 {
