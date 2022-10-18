@@ -1,13 +1,26 @@
 public class Main
 {
     /*
-    Objectives
+    
+    objectives:
+        * finish the second level
+        * add a boss level? that would be interesting:
+            - every couple levels you have to beat a boss with a fun AI? that is really challenging (bows are probably powerful against bosses)
+            - the boss drops really powerful loot upon death
+            - the boss will drop legendary items/a new tier that is better than everything else that is only from bosses
+            - you get one legendary item and multiple normal items from it
+            - you get 3 random potions from the boss (could be anything)
+        * balance the game:
+            - make mobs hard/easier so the game plays well
 
-        Winning/completing levels
+        Working On:
+            * boss
 
-     Working on
+        Bugs:
+            * attacking through walls:
+                - check for collision, if collision than stop attacking
 
-*/
+    */
 
     // the main program (links everything together)
     public static void main(String[] args)
@@ -16,15 +29,14 @@ public class Main
         Player     player = new Player();
         Map        map    = new Map();
 
+        // the players old position
         int opx = player.GetX();
         int opy = player.GetY();
 
         int frame = 0;  // the mobs don't move on the first frame
 
-        boolean alive = true;  // the main loop runs while the player is still alive
-
         // the main game loop (no reason for it to stop other than pressing the stop button in the IDE)
-        while (alive)
+        while (player.GetHealth() > 0)
         {
             if (frame != 0)  // so mobs don't move on the first frame
             {
@@ -44,13 +56,12 @@ public class Main
 
             // updating the player and render/getting the usr interface/input
             player.Update(map);
-            alive = player.GetAlive();
 
             frame++;  // incrementing the frame
         }
 
         // checking if the game was finished or the player died
-        if (!alive) System.out.println("You Died...");  // the player lost
+        if (player.GetHealth() <= 0) System.out.println("You Died...");  // the player lost
     }
 }
 
