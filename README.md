@@ -1,4 +1,12 @@
 ### Text-Based-Dungeons
 
-I wrote this text based dungeon game in Java for my AP computer science class. It is under development although is almost complete. I may finish the second level and possibly will add more items, levels, or mobs. I may also add a main menu screen but I'm not entirely sure yet what will actaully happen with the future of the game. Currently you can interat with chests and your inventory/character. You can also walk around and attack mobs. You can take damage and get buffs. The map around the player is dark with a bubble of glow from items or torches.
+A text based top-down dugeon game made for my AP Computer Science class. You can fight your way through mob invested rooms. You can grab dropped items from mobs and open chests. You can enchant your weapons and fights bosses to get legendary loot to continue your fighting. Although if you die the game is over.
+
+## Future Plans
+* More Levels
+* More Mobs
+* More Bosses
+* More Items
+
+I'm not sure how much more work I will put into the game. I finished the AP Computer Science classes work and now have been spending some time going back through the game and adding to it. I may continue with this or start on another project. I also have another project I'm starting soon that may take over.
 
